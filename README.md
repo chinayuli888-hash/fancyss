@@ -218,7 +218,7 @@ tx：华硕天选青色皮肤
 
 6. 只为老 ARM 路由器本地测试 `lite` 包时，可以运行 `bash build.sh --package arm lite`。请在一次性完整克隆或独立工作树中运行：脚本仍会重建规则资产、同步各平台二进制并清空 `packages/`。单包模式只生成 `fancyss_arm_lite.tar.gz` 和仅含该包校验值的 `version.json.js`，不会写入相邻的历史包目录；它不能作为面向全部平台的更新目录发布。正式发布全部平台时仍运行 `bash build.sh`。
 
-7. 自建 Fork 发布更新前，先构建并验证 Fork 中的安装包，再把 `fancyss/scripts/ss_update.sh` 和 `fancyss/webs/Module_shadowsocks.asp` 中的上游 `packages` 地址改为自己的仓库。仅修改源码、未重建安装包时，页面上的“检查并更新”仍会从原作者仓库下载旧包，覆盖本地改动。
+7. 本 Fork 已将 `ss_update.sh` 和页面版本提示的 `packages` 地址指向自己的仓库，避免将来从上游安装包覆盖本地修复。Fork 继承的清单仍是 `3.5.30`，尚未发布含这些补丁的新安装包；同版本检查会退出。准备正式发布前，须先构建并验证安装包、提高版本号，再更新 Fork 的完整发布目录与清单。单独生成的 `arm lite` 清单不能替代其他平台的完整清单。
 
 ## 相关链接
 
