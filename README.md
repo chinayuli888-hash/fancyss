@@ -4,11 +4,6 @@
 - 此项目提供用于asuswrt、asuswrt-merlin为基础的，带软件中心固件（≥384）路由器的科学上网功能。
 
 ---
-- 📺 广告1：[ChatGPT Plus、Netflix、Disney+、Spotify、YouTube等会员账号合租，95折优惠码: fancyss](https://nf.video/9QQkT)
-- 🚀 广告2：[fancyss合作top机场：<b>Nexitally/奶昔</b> | 全中转机场 / 优质线路资源 / 支持udp / 解锁流媒体，ChatGPT](https://nxboom.com/?PartnerCode=af8f126dd490446e80737444dd0064f6)
-- ✈️ 广告3：[fancyss高速机场推荐：<b>ssLinks</b> | 性价比全中转机场 / 80+线路 / 流媒体解锁，9折优惠码: fancyss](https://98a6251b6cd7471da86cca993b6dbe6f.36d.biz/#/register?code=yf6ozeEO)
----
-
 ## 插件特色
 
 - 面向华硕 Merlin / 官改固件软件中心环境的透明代理插件，覆盖 `arm`、`hnd`、`hnd_v8`、`qca`、`mtk`、`ipq32`、`ipq64` 七个平台
@@ -173,7 +168,7 @@ tx：华硕天选青色皮肤
 - **rules_ng/**：传统规则源，如 `gfwlist`、`chnroute`、`black_list` 等
 - **rules_ng2/**：节点分流使用的新规则资产树，包含 `site/`、`ip/`、`meta/`、`dat/`
 - **scripts/**：仓库级辅助脚本，主要负责 `geosite/geoip` 资产生成和本地工具链准备
-- **tool/**：自研工具源码子项目（submodule），目前主要是 `geotool` 和 `xapi-tool`
+- **tool/**：自研工具源码子项目（submodule），包含 `geotool`、`status-tool`、`webtest-tool` 等；这些工具的源码和 ARM 二进制需分别维护
 - **packages/**：打包产物目录，包含各平台离线安装包和 `version.json.js`
 - **doc/**：文档目录，`doc/` 根目录是用户文档，其余分类目录主要面向开发和维护
 
@@ -183,10 +178,10 @@ tx：华硕天选青色皮肤
 >
 > 打包前会自动同步传统规则、重建 `rules_ng2` 的 `geosite/geoip` 资产，并从 `binaries/` 中拷贝当前指定版本的核心二进制。
 
-1. 使用 Linux 环境准备仓库，建议带上 submodule 一起拉取
+1. 使用 Linux 或 WSL 的 Linux 文件系统准备完整仓库。仓库的 `.gitattributes` 会保持 Shell 脚本为 LF 行尾；如果沿用旧的 Windows 工作树，请先用 `git ls-files --eol build.sh` 确认工作区显示 `w/lf`，否则在干净状态重新检出脚本
 
    ```bash
-   git clone --recurse-submodules https://github.com/hq450/fancyss.git
+   git clone https://github.com/hq450/fancyss.git
    ```
 
 2. 切换到 `3.0` 分支
@@ -194,7 +189,14 @@ tx：华硕天选青色皮肤
    ```bash
    cd fancyss
    git checkout 3.0
+   git submodule sync --recursive
+   # 当前 arm lite 本地构建：先初始化可公开获取的 8 个子模块
+   git submodule update --init --recursive -- \
+     tool/geotool tool/xapi-tool tool/node-tool tool/ws-tool \
+     tool/status-tool tool/sub-get tool/anytls-zig tool/webtest-tool
    ```
+
+   当前 `tool/sub-tool` 指针指向[尚未公开的提交](https://github.com/hq450/fancyss/issues/33910)。上面的命令暂时跳过它；`arm lite` 单包构建会校验并复用与仓库内暂存的 ARM 二进制一致的预编译 `sub-tool`。这只保证安装包沿用已校验的二进制，不能重建该工具的源码；正式发布全部平台前仍需修复子模块指针并完成完整构建验证。
 
 3. 根据需要修改以下内容
    - 插件运行逻辑：`fancyss/`
@@ -205,7 +207,7 @@ tx：华硕天选青色皮肤
 4. 运行打包脚本
 
    ```bash
-   sh build.sh
+   bash build.sh
    ```
 
 5. 当前 `build.sh` 的实际行为
@@ -214,7 +216,9 @@ tx：华硕天选青色皮肤
    - 会额外生成 7 个平台的 `full debug` 包：`fancyss_<platform>_full_debug.tar.gz`
    - 生成完成后会同时更新 `packages/version.json.js`
 
-6. 如果你只想打某个平台、某种包型，或者不想同时生成 debug 包，直接修改 [build.sh](./build.sh) 里的 `make()` 即可
+6. 只为老 ARM 路由器本地测试 `lite` 包时，可以运行 `bash build.sh --package arm lite`。请在一次性完整克隆或独立工作树中运行：脚本仍会重建规则资产、同步各平台二进制并清空 `packages/`。单包模式只生成 `fancyss_arm_lite.tar.gz` 和仅含该包校验值的 `version.json.js`，不会写入相邻的历史包目录；它不能作为面向全部平台的更新目录发布。正式发布全部平台时仍运行 `bash build.sh`。
+
+7. 自建 Fork 发布更新前，先构建并验证 Fork 中的安装包，再把 `fancyss/scripts/ss_update.sh` 和 `fancyss/webs/Module_shadowsocks.asp` 中的上游 `packages` 地址改为自己的仓库。仅修改源码、未重建安装包时，页面上的“检查并更新”仍会从原作者仓库下载旧包，覆盖本地改动。
 
 ## 相关链接
 

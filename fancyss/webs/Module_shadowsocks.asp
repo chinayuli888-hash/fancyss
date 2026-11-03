@@ -270,8 +270,6 @@ body .shunt-editor-layer .layui-layer-btn a{border-radius:5px !important;}
 .submgr-card-btn.sync{background:linear-gradient(135deg,#159957,#38d27a);}
 .submgr-card-btn.sync.disabled{background:linear-gradient(135deg,#6b7280,#9ca3af);color:#eef2f7;box-shadow:none;cursor:not-allowed;pointer-events:none;}
 .submgr-empty{padding:34px 22px;border:1px dashed rgba(255,255,255,0.1);border-radius:5px;background:rgba(18,24,34,0.44);color:#9fb6d1;line-height:1.9;text-align:center;}
-.submgr-empty-ad{display:block;margin-top:10px;padding:12px 14px;border-radius:5px;background:linear-gradient(135deg,rgba(255,140,0,0.22),rgba(255,62,62,0.2));border:1px solid rgba(255,140,0,0.35);color:#ffd166 !important;font-weight:700;line-height:1.8;text-decoration:none;box-shadow:0 12px 26px rgba(255,94,0,0.12);}
-.submgr-empty-ad strong{color:#ff7b00;}
 .node-card-shell{width:750px;overflow:hidden;}
 .node-card-sections{display:flex;flex-direction:column;gap:10px;padding:12px 10px 4px 2px;box-sizing:border-box;}
 .node-card-sections::-webkit-scrollbar{width:8px;height:8px;}
@@ -749,7 +747,6 @@ var option_fingerprint = ["chrome", "firefox", "safari", "ios", "android", "edge
 var option_naive_prot = ["https", "quic"];						//fancyss-full
 var option_hy2_obfs = [["0", "停用"], ["1", "salamander"]];
 var option_hy2_cg = ["reno", "bbr", "brutal", "force-brutal"];
-var stop_scroll = 0;
 var close_latency_flag = 0;
 var stopFlag = 1;
 const pattern=/[`~!@#$^&*()=|{}':;'\\\[\]\.<>\/?~！@#￥……&*（）——|{}%【】'；：""'。，、？\s]/g;
@@ -777,7 +774,6 @@ var statusHistorySnapshotBuffer = "";
 var hostname = document.domain;
 var lan_ipaddr = '<% nvram_get("lan_ipaddr"); %>';
 var mouse_status;
-var ads_url_1
 var ws_enable = 1;
 var node_form_defaults = null;
 var single_test_wait = {};
@@ -5589,7 +5585,7 @@ function get_subscription_schedule_label(itemOrDay, hour) {
 }
 function render_subscription_profiles_cards() {
 	if (!subscribeProfilesState.length) {
-		return '<div class="submgr-empty">当前还没有订阅配置。<br />点击下方“新增订阅”开始创建机场级配置。<a class="submgr-empty-ad" target="_blank" href="https://123s.co/#/register?code=yf6ozeEO">🚀没有订阅地址？试试 <strong>ssLinks</strong> 机场，全中转 / 多国线路 / 流媒体解锁，优惠码: fancyss</a></div>';
+		return '<div class="submgr-empty">当前还没有订阅配置。<br />点击下方“新增订阅”开始创建机场级配置。</div>';
 	}
 	var html = '<div class="submgr-card-list">';
 	for (var i = 0; i < subscribeProfilesState.length; i++) {
@@ -13802,92 +13798,7 @@ function version_show() {
 	});
 }
 function message_show() {
-	if (db_ss["ss_close_mesg"] == "0") return
-	$.ajax({
-		url: 'https://gist.githubusercontent.com/hq450/001dd0617a64e11a9492dcf9205a0e03/raw/fancyss_msg.json?_=' + new Date().getTime(),
-		type: 'GET',
-		dataType: 'json',
-		cache: false,
-		success: function(res) {
-			// 处理内置推荐
-			if (res["ads_url_1"] && res["ads_des_1"]){
-				ads_url_1 = res["ads_url_1"];
-				ads_des_1 = res["ads_des_1"];
-				if (node_nu == 0 && poped == 0) pop_node_add_ads();
-				if(!E("ss_online_links").value){
-					sub_ads_html = '<a target="_blank" href="' + ads_url_1 + '"><em>' + ads_des_1 + '</em></a>';
-					$('#ss_sub_ads').html(sub_ads_html)
-				}
-			}else{
-				if (node_nu == 0 && poped == 0) pop_node_add();
-			}
-			
-			var rand_1 = parseInt(Math.random() * 100)
-			// 通知1，一般通知下更新日志，如果已经升级到最新版本，则不再显示更新日志
-			if (res["msg_1"] && res["switch_1"]){
-				if (rand_1 < res["switch_1"]){
-					if (versionCompare(res["version"], db_ss["ss_basic_version_local"])) {
-						$("#fixed_msg").append('<li id="msg_1" style="list-style: none;height:23px">' + res["msg_1"] + '</li>');
-					}
-				}
-			}
-			// 通知2，其它重要通知的时候使用
-			if (res["msg_2"] && res["switch_2"]){
-				if (rand_1 < res["switch_2"]){
-					$("#fixed_msg").append('<li id="msg_2" style="list-style: none;height:23px">' + res["msg_2"] + '</li>');
-				}
-			}
-			// 广告位，广告不能放太多，要优质，稍多的话限制显示数量，以滚动形式显示，免得太碍人眼
-			var ads_count = 0;
-			var rand_2 = parseInt(Math.random() * 100)
-			for(var i = 3; i < 10; i++){
-				if (res["msg_" + i] && res["switch_" + i]){
-					if (rand_2 < res["switch_" + i]){
-						$("#scroll_msg").append('<li id="msg_' + i + '" style="list-style: none;height:23px">' + res["msg_" + i] + '</li>');
-						ads_count++;
-					}
-				}
-			}
-			// 如果只有两个广告，就全部显示，且不进行滚动
-			//console.log(ads_count + "个广告！")
-			if (ads_count == 0) return;
-			if (ads_count <= 2){
-				$("#scroll_msg").css("height", (ads_count * 23) + "px");
-				return;
-			}
-			//超过两个广告，则广告显示高度为推送的高度
-			if (res["scroll_line"]){
-				$("#scroll_msg").css("height", (res["scroll_line"] * 23) + "px");
-			}else{
-				$("#scroll_msg").css("height", "23px");
-			}
-			//鼠标放上广告停止滚动
-			$("#scroll_msg").on("mouseover", function() {
-				stop_scroll = 1;
-			});
-			//鼠标移开恢复滚动
-			$("#scroll_msg").on("mouseleave", function() {
-				stop_scroll = 0;
-			});
-			//开始滚动，每个广告停留5s
-			if (res["ads_time"]){
-				setInterval(scroll_msg, res["ads_time"]);
-			}else{
-				setInterval(scroll_msg, 5000);
-			}
-		},
-		error: function(XmlHttpRequest, textStatus, errorThrown){
-			console.log(XmlHttpRequest.responseText);
-			if (node_nu == 0 && poped == 0) pop_node_add();
-		}
-	});
-}
-function scroll_msg() {
-	if(stop_scroll == 0) {
-		$('#scroll_msg').stop().animate({scrollTop: 23}, 500, 'swing', function() {
-			$(this).find('li:last').after($('li:first', this));
-		});
-	}
+	if (node_nu == 0 && poped == 0) pop_node_add();
 }
 function update_ss() {
 	var dbus_post = {};
@@ -16507,10 +16418,7 @@ function toggleKeyMask(o, show){
 														、<a href="https://github.com/apernet/hysteria" target="_blank"><em><u>Hysteria2</u></em></a>
 														、<a href="https://github.com/anytls/anytls-go" target="_blank"><em><u>AnyTLS</u></em></a>				<!--fancyss-full-->
 														的科学上网工具。
-														<a href="https://t.me/joinchat/AAAAAEC7pgV9vPdPcJ4dJw" target="_blank"><em>Telegram交流群</em></a>
 													</li>
-												</ul>
-												<ul id="scroll_msg" style="padding:0;margin:0;line-height:1.8;overflow: hidden;">
 												</ul>
 											</div>
 											<!-- this is the popup area for process status -->
@@ -17478,7 +17386,6 @@ function toggleKeyMask(o, show){
 															{ title: '节点订阅设置', thead:'1'},
 															{ title: '订阅地址管理<br><br><font color="#ffcc00">支持SS/SSR/V2ray/Xray/Trojan</font>', multi: [
 																{ id:'ss_online_links', type:'textarea', hint:'116', rows:'12', ph:ph1},
-																{ suffix: '<span id="ss_sub_ads"></span>' },
 															]},
 															{ title: '订阅节点模式设定', id:'ssr_subscribe_mode', type:'select', style:'width:auto', options:option_modes, value:'2'},
 															{ title: 'hysteria2订阅设置', multi: [

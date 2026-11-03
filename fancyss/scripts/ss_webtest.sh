@@ -1404,7 +1404,6 @@ wt_runtime_cleanup() {
 	killall wt-tuic >/dev/null 2>&1
 	killall wt-hy2 >/dev/null 2>&1
 	killall webtest-tool >/dev/null 2>&1
-	killall curl-fancyss >/dev/null 2>&1
 	ps w 2>/dev/null | grep -F '/tmp/fancyss_webtest/webtest_tool_' | grep -E 'follow\.sh|tail -n \+1 -f' | grep -v grep | awk '{print $1}' | while read -r pid
 	do
 		[ -n "${pid}" ] || continue

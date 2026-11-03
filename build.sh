@@ -1,11 +1,30 @@
 #!/usr/bin/env bash
 
 MODULE=shadowsocks
-VERSION=$(cat ./fancyss/ss/version|sed -n 1p)
 TITLE="科学上网"
 DESCRIPTION="科学上网"
 HOME_URL=Module_shadowsocks.asp
 CURR_PATH="$( cd "$( dirname "$BASH_SOURCE[0]" )" && pwd )"
+
+# A local ARM lite build does not need to package every supported router.
+# The default invocation still produces the complete release set.
+TARGET_PLATFORM=""
+TARGET_PKGTYPE=""
+if [ "$#" -gt 0 ]; then
+	if [ "$#" -ne 3 ] || [ "$1" != "--package" ]; then
+		echo "Usage: bash build.sh [--package <platform> <full|lite>]" >&2
+		exit 2
+	fi
+	case "$2" in
+		arm|hnd|hnd_v8|qca|mtk|ipq32|ipq64) TARGET_PLATFORM="$2" ;;
+		*) echo "Unsupported platform: $2" >&2; exit 2 ;;
+	esac
+	case "$3" in
+		full|lite) TARGET_PKGTYPE="$3" ;;
+		*) echo "Unsupported package type: $3" >&2; exit 2 ;;
+	esac
+fi
+VERSION=$(cat ./fancyss/ss/version|sed -n 1p)
 
 cp_rules(){
 	local target=${CURR_PATH}/fancyss/ss/rules/
@@ -44,7 +63,44 @@ prepare_geodata_assets(){
 
 zig_tool_version(){
 	local tool_dir="$1"
-	tr -d '\r\n' < "${CURR_PATH}/tool/${tool_dir}/VERSION"
+	local version_file="${CURR_PATH}/tool/${tool_dir}/VERSION"
+	# A targeted ARM lite build must preserve the staged binary. The public
+	# sub-tool source may be older than the binary included in fancyss.
+	if [ "${tool_dir}" = "sub-tool" ] && [ "${TARGET_PLATFORM}" = "arm" ] && [ "${TARGET_PKGTYPE}" = "lite" ];then
+		local staged="${CURR_PATH}/fancyss/bin-arm/sub-tool"
+		local staged_hash manifest version name expected artifact artifact_hash source_version
+		[ -s "${staged}" ] || return 1
+		staged_hash="$(sha256sum "${staged}" | awk '{print $1}')" || return 1
+		for manifest in "${CURR_PATH}"/binaries/sub-tool/SHA256SUMS-v*;do
+			[ -f "${manifest}" ] || continue
+			version="${manifest##*SHA256SUMS-v}"
+			name="sub-tool-v${version}-linux-armv5te"
+			expected="$(awk -v name="${name}" '$2 == name { print $1 }' "${manifest}")"
+			[ -n "${expected}" ] && [ "${expected}" = "${staged_hash}" ] || continue
+			artifact="${CURR_PATH}/binaries/sub-tool/${name}"
+			[ -s "${artifact}" ] || continue
+			artifact_hash="$(sha256sum "${artifact}" | awk '{print $1}')" || return 1
+			[ "${artifact_hash}" = "${expected}" ] || continue
+			if [ -r "${version_file}" ];then
+				source_version="$(tr -d '\r\n' < "${version_file}")"
+				if [ "${source_version}" != "${version}" ];then
+					echo "warning: sub-tool source v${source_version} differs from staged v${version}; using verified prebuilt binary" >&2
+				fi
+			else
+				echo "warning: sub-tool source gitlink is unavailable; using verified prebuilt v${version}" >&2
+			fi
+			printf '%s' "${version}"
+			return 0
+		done
+		echo "error: staged ARM sub-tool does not match a verified prebuilt release" >&2
+		return 1
+	fi
+	if [ -r "${version_file}" ];then
+		tr -d '\r\n' < "${version_file}"
+		return
+	fi
+	echo "error: missing source VERSION for ${tool_dir}" >&2
+	return 1
 }
 
 set_pkg_web_meta(){
@@ -128,7 +184,9 @@ sync_binary(){
 	cp -rf ${CURR_PATH}/binaries/xapi-tool/xapi-tool-${XAPITOOL_VER}-linux-armv7hf ${CURR_PATH}/fancyss/bin-hnd/xapi-tool
 	cp -rf ${CURR_PATH}/binaries/xapi-tool/xapi-tool-${XAPITOOL_VER}-linux-armv7a ${CURR_PATH}/fancyss/bin-qca/xapi-tool
 
-	local SUBTOOL_VER="v$(zig_tool_version sub-tool)"
+	local SUBTOOL_VER
+	SUBTOOL_VER="$(zig_tool_version sub-tool)" || return 1
+	SUBTOOL_VER="v${SUBTOOL_VER}"
 	cp -rf ${CURR_PATH}/binaries/sub-tool/sub-tool-${SUBTOOL_VER}-linux-aarch64 ${CURR_PATH}/fancyss/bin-mtk/sub-tool
 	cp -rf ${CURR_PATH}/binaries/sub-tool/sub-tool-${SUBTOOL_VER}-linux-aarch64 ${CURR_PATH}/fancyss/bin-hnd_v8/sub-tool
 	cp -rf ${CURR_PATH}/binaries/sub-tool/sub-tool-${SUBTOOL_VER}-linux-aarch64 ${CURR_PATH}/fancyss/bin-ipq64/sub-tool
@@ -206,6 +264,9 @@ verify_zig_tool_binaries(){
 	verify_zig_copy(){
 		source_file="$1"
 		bin_platform="$2"
+		if [ -n "${TARGET_PLATFORM}" ] && [ "${bin_platform}" != "${TARGET_PLATFORM}" ]; then
+			return
+		fi
 		target_file="$3"
 		target_file="${CURR_PATH}/fancyss/bin-${bin_platform}/${target_file}"
 
@@ -237,7 +298,9 @@ verify_zig_tool_binaries(){
 	verify_zig_copy "${CURR_PATH}/binaries/xapi-tool/xapi-tool-${XAPITOOL_VER}-linux-armv7hf" hnd xapi-tool
 	verify_zig_copy "${CURR_PATH}/binaries/xapi-tool/xapi-tool-${XAPITOOL_VER}-linux-armv7a" qca xapi-tool
 
-	local SUBTOOL_VER="v$(zig_tool_version sub-tool)"
+	local SUBTOOL_VER
+	SUBTOOL_VER="$(zig_tool_version sub-tool)" || return 1
+	SUBTOOL_VER="v${SUBTOOL_VER}"
 	verify_zig_copy "${CURR_PATH}/binaries/sub-tool/sub-tool-${SUBTOOL_VER}-linux-aarch64" mtk sub-tool
 	verify_zig_copy "${CURR_PATH}/binaries/sub-tool/sub-tool-${SUBTOOL_VER}-linux-aarch64" hnd_v8 sub-tool
 	verify_zig_copy "${CURR_PATH}/binaries/sub-tool/sub-tool-${SUBTOOL_VER}-linux-aarch64" ipq64 sub-tool
@@ -553,7 +616,7 @@ build_pkg() {
 }
 
 do_backup(){
-	if [ "${CURR_PATH}/../fancyss_history_package" ];then
+	if [ -d "${CURR_PATH}/../fancyss_history_package" ];then
 		local platform=$1
 		local pkgtype=$2
 		local release_type=$3
@@ -567,10 +630,10 @@ do_backup(){
 			
 			echo "备份：fancyss_${platform}_${pkgtype}_${backup_version}.tar.gz"
 			cp ${CURR_PATH}/packages/fancyss_${platform}_${pkgtype}.tar.gz ${HISTORY_DIR}/fancyss_${platform}_${pkgtype}_${backup_version}.tar.gz
-			sed -i "/fancyss_${platform}_${pkgtype}_${backup_version}/d" ${HISTORY_DIR}/md5sum.txt
 			if [ ! -f ${HISTORY_DIR}/md5sum.txt ];then
 				touch ${HISTORY_DIR}/md5sum.txt
 			fi
+			sed -i "/fancyss_${platform}_${pkgtype}_${backup_version}/d" ${HISTORY_DIR}/md5sum.txt
 			echo ${backup_tar_md5} fancyss_${platform}_${pkgtype}_${backup_version}.tar.gz >> ${HISTORY_DIR}/md5sum.txt
 		fi
 	fi
@@ -600,7 +663,7 @@ finish(){
 pack(){
 	gen_folder $1 $2 $3
 	build_pkg $1 $2 $3
-	if [ "$3" == "release" ];then
+	if [ "$3" == "release" ] && [ -z "${TARGET_PLATFORM}" ];then
 		do_backup  $1 $2 $3
 	fi
 	rm -rf ${CURR_PATH}/shadowsocks/
@@ -608,6 +671,11 @@ pack(){
 
 make(){
 	papare
+	if [ -n "${TARGET_PLATFORM}" ]; then
+		pack "${TARGET_PLATFORM}" "${TARGET_PKGTYPE}" release
+		finish
+		return
+	fi
 	# --- for release ---
 	pack hnd full release
 	pack hnd lite release

@@ -212,7 +212,6 @@ function pop_help() {
 			七种客户端的科学上网、游戏加速工具。<br \><br \>\
 			本插件支持以Asuswrt、Asuswrt-Merlin为基础的，带软件中心的固件，目前固件均由<a style="color:#e7bd16" target="_blank" href="https://www.koolcenter.com/">https:\/\/www.koolcenter.com/</a>提供。<br \><br \>\
 			使用本插件有任何问题，可以前往<a style="color:#e7bd16" target="_blank" href="https://github.com/hq450/fancyss/issues"><u>github的issue页面</u></a>反馈~<br \><br \>\
-			● 插件交流：<a style="color:#e7bd16" target="_blank" href="https://t.me/+PzdfDBssIIFmMThl"><u>加入telegram群组</u></a><br \><br \>\
 			我们的征途是星辰大海 ^_^</div>'
 	});
 }
@@ -270,54 +269,6 @@ function pop_node_add() {
 	poped = 1;
 }
 
-function pop_node_add_ads() {
-	note = "<li>检测到你尚未添加任何代理节点！你至少需要一个节点，才能让插件正常工作！</li><br /> ";
-	note += "<li>如果你已经有节点，请从【手动添加】【节点订阅】【恢复配置】中选择一种添加。</li><br />";
-	note += "<li>如果你没有节点且不知道如何购买或搭建，可以点击【机场推荐】购买本插件推荐的机场<br />";
-	layer.open({
-		type: 0,
-		skin: 'layui-layer-lan',
-		shade: 0.8,
-		title: '提醒',
-		area: ['620px', '280px'],
-		time: 0,
-		btnAlign: 'c',
-		maxmin: true,
-		content: note,
-		btn: ['手动添加', '订阅节点', '恢复配置', '机场推荐'],
-		btn1: function() {
-			$("#add_ss_node").trigger("click");
-			layer.closeAll();
-		},
-		btn2: function(index) {
-			return open_subscription_manager_from_node_tip(index);
-		},
-		btn3: function() {
-			$("#show_btn9").trigger("click");
-		},
-		btn4: function() {
-			window.open(
-				ads_url_1,
-				'_blank'
-			);
-			return false;
-		},
-		success: function(layero, index){
-			console.log(index);
-			var page_h = window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight;
-			var page_w = window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth;
-			var elem_h = E("layui-layer" + index).clientHeight;
-			var elem_w = E("layui-layer" + index).clientWidth;
-			var elem_h_offset = (page_h - elem_h) / 2 - 90;
-			var elem_w_offset = (page_w - elem_w) / 2 + 90;
-			if(elem_h_offset < 0){
-				elem_h_offset = 10;
-			}
-			$('#layui-layer' + index).offset({top: elem_h_offset, left: elem_w_offset});
-		}
-	});
-	poped = 1;
-}
 function compare(val1,val2){
 	return val1-val2;
 }
@@ -859,7 +810,7 @@ function openssHint(itemNum, flag) {
 		statusmenu += "<br /><br />&nbsp;&nbsp;&nbsp;&nbsp;开启后，这些信息节点将参与订阅结果校验；像Sync这类每次都会变化的信息，可能会让订阅更频繁地判定为“节点发生变更”。";
 		_caption = "说明";
 	} else if (itemNum == 116) {
-		statusmenu = "&nbsp;&nbsp;&nbsp;&nbsp;此处填入你的机场订阅链接，通常是http://或https://开头的链接，多个链接可以分行填写！<br />&nbsp;&nbsp;&nbsp;&nbsp;也可以增加非http开头的行作为注释，或使用空行或者符号线作为分割，订阅脚本仅会提取http://或https://开头的链接用以订阅，示例：<br />-------------------------------------------------<br />🚀魅影极速<br />https://subserver.maying.io/xxx<br /><br />🛩️nextitally<br />https://naixisubs.com/downloadConfig/xxx<br />-------------------------------------------------"
+		statusmenu = "&nbsp;&nbsp;&nbsp;&nbsp;此处填入你的机场订阅链接，通常是http://或https://开头的链接，多个链接可以分行填写！<br />&nbsp;&nbsp;&nbsp;&nbsp;也可以增加非http开头的行作为注释，或使用空行或者符号线作为分割，订阅脚本仅会提取http://或https://开头的链接用以订阅，示例：<br />-------------------------------------------------<br />示例订阅1<br />https://example.com/subscription/one<br /><br />示例订阅2<br />https://example.com/subscription/two<br />-------------------------------------------------"
 		_caption = "订阅地址管理";
 	} else if (itemNum == 133) {
 		width = "640px";

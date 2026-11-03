@@ -90,9 +90,9 @@ status_payload_epoch(){
 status_payload_is_fresh(){
 	local payload="$1"
 	local now epoch age
-	now="$(date +%s 2>/dev/null)" || return 0
-	epoch="$(status_payload_epoch "${payload}")" || return 0
-	[ -n "${epoch}" ] || return 0
+	now="$(date +%s 2>/dev/null)" || return 1
+	epoch="$(status_payload_epoch "${payload}")" || return 1
+	[ -n "${epoch}" ] || return 1
 	age=$((now - epoch))
 	[ "${age}" -lt 0 ] && age=$((0 - age))
 	[ "${age}" -le "${STATUS_CACHE_MAX_AGE}" ]
@@ -109,7 +109,7 @@ status_payload_matches_mode(){
 	status_payload_is_fresh "${payload}" || return 1
 	if [ "${PROXY_IPV6}" = "1" ];then
 		case "${payload}" in
-		*国外IPv4*@@*国外IPv6*@@*国内*)
+		*国外IPv4*@@*国外IPv6*@@*国内连接*)
 			return 0
 			;;
 		esac
@@ -119,7 +119,7 @@ status_payload_matches_mode(){
 	*国外IPv4*|*国外IPv6*)
 		return 1
 		;;
-	*@@*)
+	*国外链接*@@*国内连接*)
 		return 0
 		;;
 	esac
