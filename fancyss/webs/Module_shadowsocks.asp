@@ -767,6 +767,7 @@ var statusFrontHttpPending = false;
 var statusFrontSocket = null;
 var status_front_ws_direct = false;
 var statusFrontHasValidPayload = false;
+var proxySpeedPending = false;
 var statusHistorySocket = null;
 var statusHistoryType = 0;
 var statusHistorySnapshotActive = false;
@@ -14485,6 +14486,92 @@ function get_ss_status_front_websocket() {
 		}
 	});
 }
+function proxy_speed_result_text(raw) {
+	var lines = String(raw || "").replace(/XU6J03M6/g, "").split(/\r?\n/);
+	var errorText = "";
+	for (var i = 0; i < lines.length; i++) {
+		var line = lines[i].replace(/^\s+|\s+$/g, "");
+		var match = /^download_mbps=([0-9]+(?:\.[0-9]+)?) bytes=4194304 seconds=([0-9]+(?:\.[0-9]+)?)$/.exec(line);
+		if (match) {
+			return "下载 " + match[1] + " Mbps（4 MiB / " + match[2] + " 秒）";
+		}
+		if (line.indexOf("error:") === 0) {
+			errorText = line.substring(6, 126);
+		}
+	}
+	return errorText ? "测速失败：" + errorText : "测速失败：未收到有效结果";
+}
+function run_proxy_speed_test() {
+	var button = E("ss_proxy_speed_btn");
+	var result = E("ss_proxy_speed_result");
+	if (proxySpeedPending || !button || !result) return;
+	proxySpeedPending = true;
+	button.textContent = "测速中...";
+	result.textContent = "正在通过当前代理下载 4 MiB（最多 20 秒）...";
+	var buffer = "";
+	var finished = false;
+	var socket = null;
+	var httpStarted = false;
+	var wsCommandSent = false;
+	var timer = setTimeout(function() { finish("测速超时，请稍后重试"); }, 27000);
+	function finish(message) {
+		if (finished) return;
+		finished = true;
+		clearTimeout(timer);
+		proxySpeedPending = false;
+		button.textContent = "测试下载速度";
+		result.textContent = message;
+		if (socket) {
+			try { socket.close(); } catch (e) {}
+		}
+	}
+	function runHttp() {
+		if (finished || httpStarted) return;
+		httpStarted = true;
+		var id = parseInt(Math.random() * 100000000);
+		$.ajax({
+			type: "POST",
+			url: "/_api/",
+			cache: false,
+			dataType: "json",
+			timeout: 26000,
+			data: JSON.stringify({"id": id, "method": "ss_proxy_speed_http.sh", "params": [id], "fields": {}}),
+			success: function(response) {
+				var payload = response && typeof response.result === "string" ? response.result : "";
+				finish(proxy_speed_result_text(payload));
+			},
+			error: function(_, status) {
+				finish(status === "timeout" ? "测速超时，请稍后重试" : "测速请求失败，请检查路由器连接");
+			}
+		});
+	}
+	if (!is_ws_available()) {
+		runHttp();
+		return;
+	}
+	try {
+		socket = new WebSocket("ws://" + hostname + ":803/");
+	} catch (e) {
+		runHttp();
+		return;
+	}
+	socket.onopen = function() {
+		try { socket.send("sh /koolshare/scripts/ss_proxy_speed.sh"); wsCommandSent = true; }
+		catch (e) { runHttp(); }
+	};
+	socket.onmessage = function(event) {
+		var chunk = String(event.data || "");
+		if (chunk === "busy") { finish("后台忙，请稍后重试"); return; }
+		buffer += chunk;
+		if (buffer.length > 512) { finish("测速返回内容过长"); return; }
+		if (/(?:^|\n)download_mbps=[0-9]+(?:\.[0-9]+)? bytes=4194304 seconds=[0-9]+(?:\.[0-9]+)?\r?\n/.test(buffer) ||
+			/(?:^|\n)error:[^\n]*\r?\n/.test(buffer) || buffer.indexOf("XU6J03M6") !== -1) {
+			finish(proxy_speed_result_text(buffer));
+		}
+	};
+	socket.onerror = function() { if (!finished) { if (wsCommandSent) finish("测速连接中断，请稍后重试"); else runHttp(); } };
+	socket.onclose = function() { if (!finished) { if (wsCommandSent) finish(proxy_speed_result_text(buffer)); else runHttp(); } };
+}
 function get_ss_status_back() {
 	if (!should_run_front_status_live()) {
 		stop_front_status_runtime();
@@ -16541,6 +16628,13 @@ function toggleKeyMask(o, show){
 															</div>
 														</td>
 													</tr>
+									<tr id="ss_proxy_speed_row">
+										<th>当前代理下载速度</th>
+										<td style="line-height:24px;">
+											<a id="ss_proxy_speed_btn" type="button" class="ss_btn" href="javascript:void(0);" onclick="run_proxy_speed_test();return false;" title="手动下载 4 MiB，单次最多 20 秒">测试下载速度</a>
+											<span id="ss_proxy_speed_result" role="status" aria-live="polite" style="display:inline-block;max-width:350px;margin-left:12px;font-size:12px;vertical-align:middle;word-break:break-word;">未测速</span>
+										</td>
+									</tr>
 												</table>
 											</div>
 											<div id="tablets">
