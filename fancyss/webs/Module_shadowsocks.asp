@@ -768,6 +768,7 @@ var statusFrontSocket = null;
 var status_front_ws_direct = false;
 var statusFrontHasValidPayload = false;
 var proxySpeedPending = false;
+var youtubeCheckPending = false;
 var proxyTrafficTimer = null;
 var proxyTrafficRequest = null;
 var proxyTrafficPrevious = null;
@@ -14498,6 +14499,10 @@ function set_proxy_traffic_text(text) {
 	var element = E("ss_proxy_traffic_result");
 	if (element) element.textContent = text;
 }
+function set_youtube_traffic_text(text) {
+	var element = E("ss_youtube_traffic_result");
+	if (element) element.textContent = text;
+}
 function stop_proxy_traffic_runtime() {
 	proxyTrafficGeneration += 1;
 	if (proxyTrafficTimer) clearTimeout(proxyTrafficTimer);
@@ -14509,6 +14514,7 @@ function stop_proxy_traffic_runtime() {
 function start_proxy_traffic_runtime() {
 	if (!is_page_live_updates_allowed() || proxyTrafficTimer || proxyTrafficRequest || !E("ss_proxy_traffic_result")) return;
 	set_proxy_traffic_text("正在采样...");
+	set_youtube_traffic_text("正在采样...");
 	proxyTrafficTimer = setTimeout(fetch_proxy_traffic, 0);
 }
 function fetch_proxy_traffic() {
@@ -14528,13 +14534,14 @@ function fetch_proxy_traffic() {
 			if (generation !== proxyTrafficGeneration) return;
 			var payload = response && typeof response.result === "string" ? response.result : "";
 			var parts = payload.split("|");
-			if (!/^ok\|\d+\|\d+\|\d+\|\d+\|\d+$/.test(payload)) {
+			if (!/^ok\|\d+\|\d+\|\d+\|\d+\|\d+(?:\|[01]\|\d+)?$/.test(payload)) {
 				proxyTrafficPrevious = null;
 				delay = 8000;
 				set_proxy_traffic_text(payload === "unavailable|disabled" ? "代理已关闭" : "实时流量暂不可用");
+				set_youtube_traffic_text(payload === "unavailable|disabled" ? "代理已关闭" : "视频流量暂不可用");
 				return;
 			}
-			var sample = {id: parts[1] + ":" + parts[2], time: Number(parts[3]), up: Number(parts[4]), down: Number(parts[5])};
+			var sample = {id: parts[1] + ":" + parts[2], time: Number(parts[3]), up: Number(parts[4]), down: Number(parts[5]), youtubeSupported: parts[6] === "1", youtubeDown: Number(parts[7] || 0)};
 			var old = proxyTrafficPrevious;
 			var elapsed = old ? sample.time - old.time : 0;
 			if (old && old.id === sample.id && elapsed > 0 && elapsed <= 30000 && sample.up >= old.up && sample.down >= old.down) {
@@ -14544,6 +14551,14 @@ function fetch_proxy_traffic() {
 			} else {
 				set_proxy_traffic_text("正在采样...");
 			}
+			if (!sample.youtubeSupported) {
+				set_youtube_traffic_text("当前模式暂不支持视频单独统计");
+			} else if (old && old.id === sample.id && old.youtubeSupported && elapsed > 0 && elapsed <= 30000 && sample.youtubeDown >= old.youtubeDown) {
+				var youtubeDown = (sample.youtubeDown - old.youtubeDown) * 8 / (elapsed * 1000);
+				set_youtube_traffic_text(youtubeDown < 0.005 ? "暂未识别到视频下载" : "下载 " + youtubeDown.toFixed(2) + " Mbps");
+			} else {
+				set_youtube_traffic_text("正在采样...");
+			}
 			proxyTrafficPrevious = sample;
 		},
 		error: function(_, status) {
@@ -14551,6 +14566,7 @@ function fetch_proxy_traffic() {
 			proxyTrafficPrevious = null;
 			delay = 8000;
 			set_proxy_traffic_text("实时流量暂不可用");
+			set_youtube_traffic_text("视频流量暂不可用");
 		},
 		complete: function() {
 			if (generation !== proxyTrafficGeneration) return;
@@ -14559,14 +14575,79 @@ function fetch_proxy_traffic() {
 		}
 	});
 }
+function youtube_check_result_text(raw) {
+	var lines = String(raw || "").replace(/XU6J03M6/g, "").split(/\r?\n/);
+	for (var i = 0; i < lines.length; i++) {
+		var line = lines[i].replace(/^\s+|\s+$/g, "");
+		var match = /^youtube_status=ok seconds=([0-9]+(?:\.[0-9]+)?)$/.exec(line);
+		if (match) return "YouTube 可访问（" + match[1] + " 秒）";
+		if (line.indexOf("error:") === 0) return "YouTube 连接失败，请检查当前节点";
+	}
+	return "YouTube 检测未收到有效结果";
+}
+function run_youtube_check() {
+	var button = E("ss_youtube_check_btn");
+	var result = E("ss_youtube_check_result");
+	if (youtubeCheckPending || !button || !result) return;
+	youtubeCheckPending = true;
+	button.textContent = "检测中...";
+	result.textContent = "正在通过当前代理连接 YouTube...";
+	var buffer = "";
+	var finished = false;
+	var socket = null;
+	var httpStarted = false;
+	var wsCommandSent = false;
+	var timer = setTimeout(function() { finish("YouTube 检测超时，请稍后重试"); }, 32000);
+	function finish(message) {
+		if (finished) return;
+		finished = true;
+		clearTimeout(timer);
+		youtubeCheckPending = false;
+		button.textContent = "检测 YouTube";
+		result.textContent = message;
+		if (socket) { try { socket.close(); } catch (e) {} }
+	}
+	function runHttp() {
+		if (finished || httpStarted) return;
+		httpStarted = true;
+		var id = parseInt(Math.random() * 100000000);
+		$.ajax({
+			type: "POST", url: "/_api/", cache: false, dataType: "json", timeout: 31000,
+			data: JSON.stringify({"id": id, "method": "ss_youtube_check_http.sh", "params": [id], "fields": {}}),
+			success: function(response) {
+				finish(youtube_check_result_text(response && typeof response.result === "string" ? response.result : ""));
+			},
+			error: function(_, status) { finish(status === "timeout" ? "YouTube 检测超时，请稍后重试" : "检测请求失败，请检查路由器连接"); }
+		});
+	}
+	if (!is_ws_available()) { runHttp(); return; }
+	try { socket = new WebSocket("ws://" + hostname + ":803/"); }
+	catch (e) { runHttp(); return; }
+	socket.onopen = function() {
+		try { socket.send("sh /koolshare/scripts/ss_youtube_check.sh"); wsCommandSent = true; }
+		catch (e) { runHttp(); }
+	};
+	socket.onmessage = function(event) {
+		var chunk = String(event.data || "");
+		if (chunk === "busy") { finish("后台忙，请稍后重试"); return; }
+		buffer += chunk;
+		if (buffer.length > 512) { finish("YouTube 检测返回内容过长"); return; }
+		if (/(?:^|\n)youtube_status=ok seconds=[0-9]+(?:\.[0-9]+)?\r?\n/.test(buffer) ||
+			/(?:^|\n)error:[^\n]*\r?\n/.test(buffer) || buffer.indexOf("XU6J03M6") !== -1) {
+			finish(youtube_check_result_text(buffer));
+		}
+	};
+	socket.onerror = function() { if (!finished) { if (wsCommandSent) finish("检测连接中断，请稍后重试"); else runHttp(); } };
+	socket.onclose = function() { if (!finished) { if (wsCommandSent) finish(youtube_check_result_text(buffer)); else runHttp(); } };
+}
 function proxy_speed_result_text(raw) {
 	var lines = String(raw || "").replace(/XU6J03M6/g, "").split(/\r?\n/);
 	var errorText = "";
 	for (var i = 0; i < lines.length; i++) {
 		var line = lines[i].replace(/^\s+|\s+$/g, "");
-		var match = /^download_mbps=([0-9]+(?:\.[0-9]+)?) bytes=1048576 seconds=([0-9]+(?:\.[0-9]+)?)$/.exec(line);
+		var match = /^download_mbps=([0-9]+(?:\.[0-9]+)?) bytes=([1-9][0-9]*) seconds=([0-9]+(?:\.[0-9]+)?)$/.exec(line);
 		if (match) {
-			return "下载 " + match[1] + " Mbps（1 MiB / " + match[2] + " 秒）";
+			return "下载 " + match[1] + " Mbps（" + (Number(match[2]) / 1024) + " KiB / " + match[3] + " 秒）";
 		}
 		if (line.indexOf("error:") === 0) {
 			errorText = line.substring(6, 126);
@@ -14580,7 +14661,7 @@ function run_proxy_speed_test() {
 	if (proxySpeedPending || !button || !result) return;
 	proxySpeedPending = true;
 	button.textContent = "测速中...";
-	result.textContent = "正在通过当前代理下载 1 MiB（最多约 35 秒）...";
+	result.textContent = "正在通过当前代理下载 512 KiB（最多约 35 秒）...";
 	var buffer = "";
 	var finished = false;
 	var socket = null;
@@ -14637,7 +14718,7 @@ function run_proxy_speed_test() {
 		if (chunk === "busy") { finish("后台忙，请稍后重试"); return; }
 		buffer += chunk;
 		if (buffer.length > 512) { finish("测速返回内容过长"); return; }
-		if (/(?:^|\n)download_mbps=[0-9]+(?:\.[0-9]+)? bytes=1048576 seconds=[0-9]+(?:\.[0-9]+)?\r?\n/.test(buffer) ||
+		if (/(?:^|\n)download_mbps=[0-9]+(?:\.[0-9]+)? bytes=[1-9][0-9]* seconds=[0-9]+(?:\.[0-9]+)?\r?\n/.test(buffer) ||
 			/(?:^|\n)error:[^\n]*\r?\n/.test(buffer) || buffer.indexOf("XU6J03M6") !== -1) {
 			finish(proxy_speed_result_text(buffer));
 		}
@@ -16708,10 +16789,19 @@ function toggleKeyMask(o, show){
 											<span style="margin-left:10px;font-size:11px;">页面打开时约每 3 秒刷新</span>
 										</td>
 									</tr>
-									<tr id="ss_proxy_speed_row">
-										<th>当前代理下载速度</th>
+									<tr id="ss_youtube_traffic_row">
+										<th>YouTube 视频实时流量</th>
 										<td style="line-height:24px;">
-											<a id="ss_proxy_speed_btn" type="button" class="ss_btn" href="javascript:void(0);" onclick="run_proxy_speed_test();return false;" title="手动下载 1 MiB，单次最多约 35 秒">测试下载速度</a>
+											<span id="ss_youtube_traffic_result" role="status" style="color:#ffcc00;">正在采样...</span>
+											<span style="margin-left:10px;font-size:11px;">仅统计识别到的视频流，缓冲时会波动</span>
+											<a id="ss_youtube_check_btn" type="button" class="ss_btn" href="javascript:void(0);" onclick="run_youtube_check();return false;" style="margin-left:10px;">检测 YouTube</a>
+											<span id="ss_youtube_check_result" role="status" aria-live="polite" style="margin-left:10px;font-size:12px;"></span>
+										</td>
+									</tr>
+									<tr id="ss_proxy_speed_row">
+										<th>Hetzner 样本下载</th>
+										<td style="line-height:24px;">
+											<a id="ss_proxy_speed_btn" type="button" class="ss_btn" href="javascript:void(0);" onclick="run_proxy_speed_test();return false;" title="手动下载 512 KiB，单次最多约 35 秒">测试下载速度</a>
 											<span id="ss_proxy_speed_result" role="status" aria-live="polite" style="display:inline-block;max-width:350px;margin-left:12px;font-size:12px;vertical-align:middle;word-break:break-word;">未测速</span>
 										</td>
 									</tr>

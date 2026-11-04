@@ -38,15 +38,22 @@ else
 fi
 DATA=$("$XAPI" stats-query --server "127.0.0.1:$PORT" --pattern 'outbound>>>' 2>/dev/null) || { respond 'unavailable|api'; exit 0; }
 COUNTS=$(printf '%s\n' "$DATA" | /koolshare/bin/jq -r '
-  [.stats | to_entries[] | select(.key == "proxy" or (.key | test("^proxy[0-9]+$")))] as $s
+  [.stats | to_entries[] | select(.key == "proxy" or .key == "fss-youtube-video" or (.key | test("^proxy[0-9]+$")))] as $s
+  | (.stats["fss-youtube-video"] // null) as $youtube
   | if ($s | length) == 0 then empty
-    else (([$s[].value.uplink] | add) | tostring) + "|" + (([$s[].value.downlink] | add) | tostring) end
+    else [([$s[].value.uplink] | add), ([$s[].value.downlink] | add),
+      (if $youtube == null then 0 else 1 end), ($youtube.downlink // 0)] | map(tostring) | join("|") end
 ' 2>/dev/null)
-case "$COUNTS" in *'|'*'|'*|'' ) respond 'unavailable|stats'; exit 0 ;; *'|'*) ;; *) respond 'unavailable|stats'; exit 0 ;; esac
 UP=${COUNTS%%|*}
-DOWN=${COUNTS#*|}
+REST=${COUNTS#*|}
+DOWN=${REST%%|*}
+REST=${REST#*|}
+YOUTUBE_SUPPORTED=${REST%%|*}
+YOUTUBE_DOWN=${REST#*|}
 case "$UP" in ''|*[!0-9]*) respond 'unavailable|stats'; exit 0 ;; esac
 case "$DOWN" in ''|*[!0-9]*) respond 'unavailable|stats'; exit 0 ;; esac
+case "$YOUTUBE_SUPPORTED" in 0|1) ;; *) respond 'unavailable|stats'; exit 0 ;; esac
+case "$YOUTUBE_DOWN" in ''|*[!0-9]*) respond 'unavailable|stats'; exit 0 ;; esac
 UPTIME=$(awk '{printf "%.0f", $1 * 1000}' /proc/uptime 2>/dev/null)
 case "$UPTIME" in ''|*[!0-9]*) respond 'unavailable|clock'; exit 0 ;; esac
 respond "ok|$PID|$START|$UPTIME|$COUNTS"

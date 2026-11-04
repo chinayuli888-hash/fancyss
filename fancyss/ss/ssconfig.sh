@@ -4684,6 +4684,10 @@ prepare_xray_traffic_stats() {
 	if [ "$(get_runtime_proxy_mode)" != "7" ] && [ -x "/koolshare/scripts/ss_proxy_traffic_config.sh" ]; then
 		sh /koolshare/scripts/ss_proxy_traffic_config.sh /koolshare/ss/xray.json || \
 			echo_date "实时代理流量统计暂不可用，继续启动代理。"
+		if [ -x "/koolshare/scripts/ss_youtube_traffic_config.sh" ]; then
+			sh /koolshare/scripts/ss_youtube_traffic_config.sh /koolshare/ss/xray.json || \
+				echo_date "YouTube 视频流量统计暂不可用，继续启动代理。"
+		fi
 	fi
 }
 
