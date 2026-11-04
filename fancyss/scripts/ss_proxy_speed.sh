@@ -6,7 +6,7 @@
 URL=${1:-https://fsn1-speed.hetzner.com/100MB.bin}
 XRAY=/koolshare/bin/xray
 WGET=/usr/sbin/wget
-BYTES=1048576
+BYTES=524288
 LOCK=/tmp/fancyss-proxy-speed.lock
 TEMP=/tmp/fancyss-proxy-speed.$$
 BRIDGE_PID=""
@@ -57,7 +57,7 @@ START=$(awk '{printf "%.0f", $1 * 1000}' /proc/uptime)
 ( ulimit -f 2048 || exit 1
   exec env -i PATH=/usr/sbin:/usr/bin:/bin:/sbin HOME="$TEMP" https_proxy="http://127.0.0.1:$PORT" \
 	"$WGET" --no-config --no-hsts -e use_proxy=on -S -t 1 -T 12 --max-redirect=0 \
-	--header='Range: bytes=0-1048575' --header='Accept-Encoding: identity' \
+	--header='Range: bytes=0-524287' --header='Accept-Encoding: identity' \
 	-O "$TEMP/body" "$URL" 2>"$TEMP/wget.log"
 ) 9>&- &
 WGET_PID=$!
@@ -74,7 +74,7 @@ if [ "$WGET_STATUS" -ne 0 ] || [ "$ACTUAL" != "$BYTES" ] || ! awk -v port="$PORT
 	{ line=tolower($0); sub(/\r$/, "", line) }
 	index(line, "connecting to 127.0.0.1:" port "... connected.") { proxy=1 }
 	line ~ /^[[:space:]]*http\/[0-9.]+ 206([[:space:]]|$)/ { status=1 }
-	line ~ /^[[:space:]]*content-range:[[:space:]]*bytes 0-1048575\/[0-9*]+[[:space:]]*$/ { range=1 }
+	line ~ /^[[:space:]]*content-range:[[:space:]]*bytes 0-524287\/[0-9*]+[[:space:]]*$/ { range=1 }
 	END { exit !(proxy && status && range) }
 ' "$TEMP/wget.log"; then
 	echo 'error: proxy download failed or returned an incomplete response' >&2
