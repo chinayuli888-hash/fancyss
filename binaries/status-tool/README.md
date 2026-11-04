@@ -16,7 +16,7 @@ Artifacts in this directory are generated from:
 make -C binaries update_status_tool
 ```
 
-The ARMv5 `status-tool-v0.1.3-linux-armv5te` in this fork comes from
+The `status-tool-v0.1.3-linux-armv5te` artifact in this fork comes from
 `chinayuli888-hash/status-tool` commit `5b17780e8b8790f8516f9cc0cd618d0f6f215d10`.
 Build it with Zig 0.15.2 from that checkout:
 
@@ -24,6 +24,8 @@ Build it with Zig 0.15.2 from that checkout:
 bash scripts/build-release.sh --no-upx armv5te
 ```
 
-This uses `arm-linux-musleabi`, CPU `arm1176jzf_s`, and `ReleaseSmall`.
-Only the ARMv5 `status-tool` artifact is replaced here; the other targets and
-`statusctl` remain at their previous builds.
+Despite the `armv5te` filename, this build uses the ARMv6 CPU target
+`arm1176jzf_s` with `arm-linux-musleabi` and `ReleaseSmall`; it was tested on
+the ARMv7 K3 and must not be assumed to work on ARMv5 CPUs. Only this
+`status-tool` artifact is replaced; other targets and `statusctl` remain at
+their previous builds.
