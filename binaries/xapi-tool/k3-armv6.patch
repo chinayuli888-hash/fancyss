@@ -1,0 +1,17 @@
+diff --git a/build.zig b/build.zig
+index 24915c2..4be02ae 100644
+--- a/build.zig
++++ b/build.zig
+@@ -11 +11 @@ pub fn build(b: *std.Build) void {
+-        .link_libc = false,
++        .link_libc = true,
+diff --git a/src/main.zig b/src/main.zig
+index d614498..6ca79c3 100644
+--- a/src/main.zig
++++ b/src/main.zig
+@@ -147,0 +148,5 @@ fn performUnaryCall(allocator: std.mem.Allocator, server: []const u8, path: []co
++    // The router's local API can disappear while Xray is restarting.
++    // Bound each socket read/write so an HTTP status request cannot hang.
++    const timeout = std.posix.timeval{ .sec = 3, .usec = 0 };
++    try std.posix.setsockopt(stream.handle, std.posix.SOL.SOCKET, std.posix.SO.RCVTIMEO, std.mem.asBytes(&timeout));
++    try std.posix.setsockopt(stream.handle, std.posix.SOL.SOCKET, std.posix.SO.SNDTIMEO, std.mem.asBytes(&timeout));

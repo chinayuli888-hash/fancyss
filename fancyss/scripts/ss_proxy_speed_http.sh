@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # HTTP API entry point for browsers without the software center WebSocket.
-# The core test has its own 20-second deadline and 4 MiB download limit.
+# The core test bounds its bridge startup and 1 MiB download.
 source /koolshare/scripts/base.sh
 
 case "$1" in

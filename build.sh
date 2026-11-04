@@ -183,6 +183,7 @@ sync_binary(){
 	cp -rf ${CURR_PATH}/binaries/xapi-tool/xapi-tool-${XAPITOOL_VER}-linux-armv7a ${CURR_PATH}/fancyss/bin-ipq32/xapi-tool
 	cp -rf ${CURR_PATH}/binaries/xapi-tool/xapi-tool-${XAPITOOL_VER}-linux-armv7hf ${CURR_PATH}/fancyss/bin-hnd/xapi-tool
 	cp -rf ${CURR_PATH}/binaries/xapi-tool/xapi-tool-${XAPITOOL_VER}-linux-armv7a ${CURR_PATH}/fancyss/bin-qca/xapi-tool
+	cp -rf ${CURR_PATH}/binaries/xapi-tool/xapi-tool-${XAPITOOL_VER}-linux-armv6 ${CURR_PATH}/fancyss/bin-arm/xapi-tool-armv6
 
 	local SUBTOOL_VER
 	SUBTOOL_VER="$(zig_tool_version sub-tool)" || return 1
@@ -297,6 +298,7 @@ verify_zig_tool_binaries(){
 	verify_zig_copy "${CURR_PATH}/binaries/xapi-tool/xapi-tool-${XAPITOOL_VER}-linux-armv7a" ipq32 xapi-tool
 	verify_zig_copy "${CURR_PATH}/binaries/xapi-tool/xapi-tool-${XAPITOOL_VER}-linux-armv7hf" hnd xapi-tool
 	verify_zig_copy "${CURR_PATH}/binaries/xapi-tool/xapi-tool-${XAPITOOL_VER}-linux-armv7a" qca xapi-tool
+	verify_zig_copy "${CURR_PATH}/binaries/xapi-tool/xapi-tool-${XAPITOOL_VER}-linux-armv6" arm xapi-tool-armv6
 
 	local SUBTOOL_VER
 	SUBTOOL_VER="$(zig_tool_version sub-tool)" || return 1

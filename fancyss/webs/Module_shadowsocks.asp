@@ -768,6 +768,10 @@ var statusFrontSocket = null;
 var status_front_ws_direct = false;
 var statusFrontHasValidPayload = false;
 var proxySpeedPending = false;
+var proxyTrafficTimer = null;
+var proxyTrafficRequest = null;
+var proxyTrafficPrevious = null;
+var proxyTrafficGeneration = 0;
 var statusHistorySocket = null;
 var statusHistoryType = 0;
 var statusHistorySnapshotActive = false;
@@ -6401,6 +6405,7 @@ function close_proc_status_socket() {
 }
 function stop_page_live_runtime() {
 	stop_front_status_runtime();
+	stop_proxy_traffic_runtime();
 	stop_shunt_stats_runtime();
 	stop_node_latency_live_runtime();
 	close_status_history_ws();
@@ -6409,6 +6414,7 @@ function stop_page_live_runtime() {
 	close_proc_status_socket();
 }
 function stop_page_background_runtime() {
+	stop_proxy_traffic_runtime();
 	stop_shunt_stats_runtime();
 	stop_node_latency_live_runtime();
 	close_status_history_ws();
@@ -6471,6 +6477,7 @@ function resume_page_live_runtime(options) {
 	if (!is_page_live_updates_allowed()) {
 		return false;
 	}
+	start_proxy_traffic_runtime();
 	if (should_run_shunt_stats_live()) {
 		schedule_shunt_stats_refresh(true);
 	}
@@ -13961,6 +13968,7 @@ function toggle_func() {
 	bind_tab_handlers();
 	bind_shunt_mode_sync();
 	bind_page_live_runtime();
+	start_proxy_traffic_runtime();
 	$("#log_content2").click(
 		function() {
 			x = -1;
@@ -14486,14 +14494,79 @@ function get_ss_status_front_websocket() {
 		}
 	});
 }
+function set_proxy_traffic_text(text) {
+	var element = E("ss_proxy_traffic_result");
+	if (element) element.textContent = text;
+}
+function stop_proxy_traffic_runtime() {
+	proxyTrafficGeneration += 1;
+	if (proxyTrafficTimer) clearTimeout(proxyTrafficTimer);
+	proxyTrafficTimer = null;
+	if (proxyTrafficRequest) proxyTrafficRequest.abort();
+	proxyTrafficRequest = null;
+	proxyTrafficPrevious = null;
+}
+function start_proxy_traffic_runtime() {
+	if (!is_page_live_updates_allowed() || proxyTrafficTimer || proxyTrafficRequest || !E("ss_proxy_traffic_result")) return;
+	set_proxy_traffic_text("正在采样...");
+	proxyTrafficTimer = setTimeout(fetch_proxy_traffic, 0);
+}
+function fetch_proxy_traffic() {
+	proxyTrafficTimer = null;
+	if (!is_page_live_updates_allowed()) return;
+	var generation = proxyTrafficGeneration;
+	var delay = 3000;
+	var id = parseInt(Math.random() * 100000000);
+	proxyTrafficRequest = $.ajax({
+		type: "POST",
+		url: "/_api/",
+		cache: false,
+		dataType: "json",
+		timeout: 7000,
+		data: JSON.stringify({"id": id, "method": "ss_proxy_traffic_http.sh", "params": [id], "fields": {}}),
+		success: function(response) {
+			if (generation !== proxyTrafficGeneration) return;
+			var payload = response && typeof response.result === "string" ? response.result : "";
+			var parts = payload.split("|");
+			if (!/^ok\|\d+\|\d+\|\d+\|\d+\|\d+$/.test(payload)) {
+				proxyTrafficPrevious = null;
+				delay = 8000;
+				set_proxy_traffic_text(payload === "unavailable|disabled" ? "代理已关闭" : "实时流量暂不可用");
+				return;
+			}
+			var sample = {id: parts[1] + ":" + parts[2], time: Number(parts[3]), up: Number(parts[4]), down: Number(parts[5])};
+			var old = proxyTrafficPrevious;
+			var elapsed = old ? sample.time - old.time : 0;
+			if (old && old.id === sample.id && elapsed > 0 && elapsed <= 30000 && sample.up >= old.up && sample.down >= old.down) {
+				var up = (sample.up - old.up) * 8 / (elapsed * 1000);
+				var down = (sample.down - old.down) * 8 / (elapsed * 1000);
+				set_proxy_traffic_text("上传 " + up.toFixed(2) + " Mbps / 下载 " + down.toFixed(2) + " Mbps");
+			} else {
+				set_proxy_traffic_text("正在采样...");
+			}
+			proxyTrafficPrevious = sample;
+		},
+		error: function(_, status) {
+			if (generation !== proxyTrafficGeneration || status === "abort") return;
+			proxyTrafficPrevious = null;
+			delay = 8000;
+			set_proxy_traffic_text("实时流量暂不可用");
+		},
+		complete: function() {
+			if (generation !== proxyTrafficGeneration) return;
+			proxyTrafficRequest = null;
+			if (is_page_live_updates_allowed()) proxyTrafficTimer = setTimeout(fetch_proxy_traffic, delay);
+		}
+	});
+}
 function proxy_speed_result_text(raw) {
 	var lines = String(raw || "").replace(/XU6J03M6/g, "").split(/\r?\n/);
 	var errorText = "";
 	for (var i = 0; i < lines.length; i++) {
 		var line = lines[i].replace(/^\s+|\s+$/g, "");
-		var match = /^download_mbps=([0-9]+(?:\.[0-9]+)?) bytes=4194304 seconds=([0-9]+(?:\.[0-9]+)?)$/.exec(line);
+		var match = /^download_mbps=([0-9]+(?:\.[0-9]+)?) bytes=1048576 seconds=([0-9]+(?:\.[0-9]+)?)$/.exec(line);
 		if (match) {
-			return "下载 " + match[1] + " Mbps（4 MiB / " + match[2] + " 秒）";
+			return "下载 " + match[1] + " Mbps（1 MiB / " + match[2] + " 秒）";
 		}
 		if (line.indexOf("error:") === 0) {
 			errorText = line.substring(6, 126);
@@ -14507,13 +14580,13 @@ function run_proxy_speed_test() {
 	if (proxySpeedPending || !button || !result) return;
 	proxySpeedPending = true;
 	button.textContent = "测速中...";
-	result.textContent = "正在通过当前代理下载 4 MiB（最多 20 秒）...";
+	result.textContent = "正在通过当前代理下载 1 MiB（最多约 35 秒）...";
 	var buffer = "";
 	var finished = false;
 	var socket = null;
 	var httpStarted = false;
 	var wsCommandSent = false;
-	var timer = setTimeout(function() { finish("测速超时，请稍后重试"); }, 27000);
+	var timer = setTimeout(function() { finish("测速超时，请稍后重试"); }, 37000);
 	function finish(message) {
 		if (finished) return;
 		finished = true;
@@ -14534,7 +14607,7 @@ function run_proxy_speed_test() {
 			url: "/_api/",
 			cache: false,
 			dataType: "json",
-			timeout: 26000,
+			timeout: 36000,
 			data: JSON.stringify({"id": id, "method": "ss_proxy_speed_http.sh", "params": [id], "fields": {}}),
 			success: function(response) {
 				var payload = response && typeof response.result === "string" ? response.result : "";
@@ -14564,7 +14637,7 @@ function run_proxy_speed_test() {
 		if (chunk === "busy") { finish("后台忙，请稍后重试"); return; }
 		buffer += chunk;
 		if (buffer.length > 512) { finish("测速返回内容过长"); return; }
-		if (/(?:^|\n)download_mbps=[0-9]+(?:\.[0-9]+)? bytes=4194304 seconds=[0-9]+(?:\.[0-9]+)?\r?\n/.test(buffer) ||
+		if (/(?:^|\n)download_mbps=[0-9]+(?:\.[0-9]+)? bytes=1048576 seconds=[0-9]+(?:\.[0-9]+)?\r?\n/.test(buffer) ||
 			/(?:^|\n)error:[^\n]*\r?\n/.test(buffer) || buffer.indexOf("XU6J03M6") !== -1) {
 			finish(proxy_speed_result_text(buffer));
 		}
@@ -16628,10 +16701,17 @@ function toggleKeyMask(o, show){
 															</div>
 														</td>
 													</tr>
+									<tr id="ss_proxy_traffic_row">
+										<th>当前代理实时流量</th>
+										<td style="line-height:24px;">
+											<span id="ss_proxy_traffic_result" role="status" style="color:#ffcc00;">正在采样...</span>
+											<span style="margin-left:10px;font-size:11px;">页面打开时约每 3 秒刷新</span>
+										</td>
+									</tr>
 									<tr id="ss_proxy_speed_row">
 										<th>当前代理下载速度</th>
 										<td style="line-height:24px;">
-											<a id="ss_proxy_speed_btn" type="button" class="ss_btn" href="javascript:void(0);" onclick="run_proxy_speed_test();return false;" title="手动下载 4 MiB，单次最多 20 秒">测试下载速度</a>
+											<a id="ss_proxy_speed_btn" type="button" class="ss_btn" href="javascript:void(0);" onclick="run_proxy_speed_test();return false;" title="手动下载 1 MiB，单次最多约 35 秒">测试下载速度</a>
 											<span id="ss_proxy_speed_result" role="status" aria-live="polite" style="display:inline-block;max-width:350px;margin-left:12px;font-size:12px;vertical-align:middle;word-break:break-word;">未测速</span>
 										</td>
 									</tr>

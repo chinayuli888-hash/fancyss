@@ -4677,7 +4677,18 @@ creat_shunt_json() {
 	esac
 }
 
+prepare_xray_traffic_stats() {
+	# Keep ordinary Xray configurations capable of reporting proxy traffic.
+	# The helper preserves custom APIs and falls back to the original config
+	# if the optional statistics setup cannot be validated.
+	if [ "$(get_runtime_proxy_mode)" != "7" ] && [ -x "/koolshare/scripts/ss_proxy_traffic_config.sh" ]; then
+		sh /koolshare/scripts/ss_proxy_traffic_config.sh /koolshare/ss/xray.json || \
+			echo_date "实时代理流量统计暂不可用，继续启动代理。"
+	fi
+}
+
 start_xray() {
+	prepare_xray_traffic_stats
 	# tfo start
 	if [ "${LINUX_VER}" != "26" ]; then
 		if [ "$ss_basic_tfo" == "1" ]; then
@@ -4817,6 +4828,7 @@ creat_trojan_json(){
 }
 
 start_trojan(){
+	prepare_xray_traffic_stats
 	# tfo
 	if [ "${LINUX_VER}" != "26" ]; then
 		if [ "${ss_basic_trojan_tfo}" == "1" ]; then
@@ -4997,6 +5009,7 @@ creat_hy2_json(){
 }
 
 start_hy2(){
+	prepare_xray_traffic_stats
 	# tfo
 	if [ "${LINUX_VER}" != "26" ]; then
 		if [ "${ss_basic_hy2_tfo}" == "1" ]; then

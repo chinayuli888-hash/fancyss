@@ -172,6 +172,12 @@ tx：华硕天选青色皮肤
 - **packages/**：打包产物目录，包含各平台离线安装包和 `version.json.js`
 - **doc/**：文档目录，`doc/` 根目录是用户文档，其余分类目录主要面向开发和维护
 
+## 本 Fork 的代理速度
+
+- “当前代理实时流量”在页面可见时约每 3 秒读取一次 Xray 代理出站计数，显示当前上传和下载流量；页面隐藏时暂停。当前实现支持带 `proxy` 标签的普通 Xray 配置和现有 Xray 分流模式，其他代理核心显示不可用。
+- “测试下载速度”通过当前 SOCKS 代理下载 1 MiB HTTPS 数据。K3 自带的 curl 会忽略代理选项，因此测速使用仅监听本机的临时 Xray HTTP 到 SOCKS 桥接和系统 wget；代理不可用或响应不完整时返回错误。
+- 普通 Xray 配置在启动时添加只监听 `127.0.0.1:10086` 的统计接口；原有自定义 API 和无法通过验证的配置会保留原样。K3 的轻量查询工具及其构建方法见 `binaries/xapi-tool/README.md`。
+
 ## 打包插件
 
 > `build.sh` 会把 `fancyss/` 复制为临时目录 `shadowsocks/`，再按平台和包型裁剪二进制、脚本和 Web 页面，最终生成离线安装包。
@@ -181,7 +187,7 @@ tx：华硕天选青色皮肤
 1. 使用 Linux 或 WSL 的 Linux 文件系统准备完整仓库。仓库的 `.gitattributes` 会保持 Shell 脚本为 LF 行尾；如果沿用旧的 Windows 工作树，请先用 `git ls-files --eol build.sh` 确认工作区显示 `w/lf`，否则在干净状态重新检出脚本
 
    ```bash
-   git clone https://github.com/hq450/fancyss.git
+   git clone https://github.com/chinayuli888-hash/fancyss.git
    ```
 
 2. 切换到 `3.0` 分支
