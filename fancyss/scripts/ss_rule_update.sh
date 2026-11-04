@@ -6,7 +6,7 @@ source /koolshare/scripts/base.sh
 eval $(dbus export ss_basic_)
 alias echo_date='echo 【$(TZ=UTC-8 date -R +%Y%m%d\ %X)】:'
 RULE_FILE=/koolshare/ss/rules/rules.json.js
-URL_MAIN="https://raw.githubusercontent.com/hq450/fancyss/3.0/rules_ng"
+URL_MAIN="https://raw.githubusercontent.com/chinayuli888-hash/fancyss/3.0/rules_ng"
 
 run(){
 	env -i PATH=${PATH} "$@"

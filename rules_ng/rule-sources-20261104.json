@@ -1,0 +1,72 @@
+{
+  "google_domains": {
+    "url": "https://raw.githubusercontent.com/felixonmars/dnsmasq-china-list/a8942d3ac6ebd8dcfc582d4e97fbb443a2176cb2/google.china.conf",
+    "resolved_url": "https://raw.githubusercontent.com/felixonmars/dnsmasq-china-list/a8942d3ac6ebd8dcfc582d4e97fbb443a2176cb2/google.china.conf",
+    "bytes": 5219,
+    "sha256": "ac6d5a7f6c034694bcb81dde0350bbed940e47d03a87da0a318afc99780bb7c6",
+    "last_modified": ""
+  },
+  "apple_domains": {
+    "url": "https://raw.githubusercontent.com/felixonmars/dnsmasq-china-list/a8942d3ac6ebd8dcfc582d4e97fbb443a2176cb2/apple.china.conf",
+    "resolved_url": "https://raw.githubusercontent.com/felixonmars/dnsmasq-china-list/a8942d3ac6ebd8dcfc582d4e97fbb443a2176cb2/apple.china.conf",
+    "bytes": 8055,
+    "sha256": "5b85e3febd8067233d86483299f257806428b5d520c65e3da3c0ce9465568f64",
+    "last_modified": ""
+  },
+  "gfw_pexcn": {
+    "url": "https://raw.githubusercontent.com/pexcn/daily/d6b53211d437dd4456d579325762cbd0668298b5/gfwlist/gfwlist.txt",
+    "resolved_url": "https://raw.githubusercontent.com/pexcn/daily/d6b53211d437dd4456d579325762cbd0668298b5/gfwlist/gfwlist.txt",
+    "bytes": 59861,
+    "sha256": "f642b9bb16f0923f0ab4113e6e0cf18cab49d139ef64beeb46a420d4ec84a60c",
+    "last_modified": ""
+  },
+  "gfw_loukky": {
+    "url": "https://raw.githubusercontent.com/Loukky/gfwlist-by-loukky/6dbb16155b5d299ead618d1e9e8f55354723ac0d/gfwlist.txt",
+    "resolved_url": "https://raw.githubusercontent.com/Loukky/gfwlist-by-loukky/6dbb16155b5d299ead618d1e9e8f55354723ac0d/gfwlist.txt",
+    "bytes": 111735,
+    "sha256": "1c62ea610ecf56c22b3ee892a4b10cc038bf639379207c7fbbc607914053babe",
+    "last_modified": ""
+  },
+  "route_misakaio": {
+    "url": "https://raw.githubusercontent.com/misakaio/chnroutes2/03513bb555232a4e57264658bbe6c39593edc7b4/chnroutes.txt",
+    "resolved_url": "https://raw.githubusercontent.com/misakaio/chnroutes2/03513bb555232a4e57264658bbe6c39593edc7b4/chnroutes.txt",
+    "bytes": 60443,
+    "sha256": "9a47052456ff47d008019a0a3ed7393116ddedb27fdaef66e3e68b38efdda759",
+    "last_modified": ""
+  },
+  "china_domains": {
+    "url": "https://raw.githubusercontent.com/felixonmars/dnsmasq-china-list/a8942d3ac6ebd8dcfc582d4e97fbb443a2176cb2/accelerated-domains.china.conf",
+    "resolved_url": "https://raw.githubusercontent.com/felixonmars/dnsmasq-china-list/a8942d3ac6ebd8dcfc582d4e97fbb443a2176cb2/accelerated-domains.china.conf",
+    "bytes": 4011515,
+    "sha256": "3780aa1aa97dffae010998ce0f320351c4646a4bd4a66327f6f99393f1ae7e22",
+    "last_modified": ""
+  },
+  "route_maxmind": {
+    "url": "https://raw.githubusercontent.com/firehol/blocklist-ipsets/240a4d9e2c938fb70aa1a6aa0ddd851276ba0604/geolite2_country/country_cn.netset",
+    "resolved_url": "https://raw.githubusercontent.com/firehol/blocklist-ipsets/240a4d9e2c938fb70aa1a6aa0ddd851276ba0604/geolite2_country/country_cn.netset",
+    "bytes": 106359,
+    "sha256": "f041c8500fe030603a7fb10a13a11b9ba194f67e6632e84ca7940e6d7b5be092",
+    "last_modified": ""
+  },
+  "route_ipip": {
+    "url": "https://raw.githubusercontent.com/firehol/blocklist-ipsets/240a4d9e2c938fb70aa1a6aa0ddd851276ba0604/ipip_country/ipip_country_cn.netset",
+    "resolved_url": "https://raw.githubusercontent.com/firehol/blocklist-ipsets/240a4d9e2c938fb70aa1a6aa0ddd851276ba0604/ipip_country/ipip_country_cn.netset",
+    "bytes": 112713,
+    "sha256": "2d61b4e3ede1eadb02b7174632a455766676cbb434db7ea3e31694225112646c",
+    "last_modified": ""
+  },
+  "route_17mon": {
+    "url": "https://raw.githubusercontent.com/17mon/china_ip_list/ad969874df17c5e15e437c682cd928309db5059c/china_ip_list.txt",
+    "resolved_url": "https://raw.githubusercontent.com/17mon/china_ip_list/ad969874df17c5e15e437c682cd928309db5059c/china_ip_list.txt",
+    "bytes": 117795,
+    "sha256": "1e855b2493221becffe6261c97efce005f2cea65bf506e3c6ca1687d7e7551ad",
+    "last_modified": ""
+  },
+  "route_apnic": {
+    "url": "https://ftp.apnic.net/stats/apnic/delegated-apnic-latest",
+    "resolved_url": "https://ftp.apnic.net/stats/apnic/delegated-apnic-latest",
+    "bytes": 4353097,
+    "sha256": "cc3ff8777c617a8dcc8ca6c544e555c1261b3164e5e852d19a634071435b7f3b",
+    "last_modified": "Tue, 03 Nov 2026 15:24:46 GMT"
+  }
+}
