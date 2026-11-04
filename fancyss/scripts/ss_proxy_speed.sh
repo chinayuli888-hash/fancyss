@@ -70,11 +70,12 @@ kill "$WATCH_PID" 2>/dev/null
 WATCH_PID=""
 END=$(awk '{printf "%.0f", $1 * 1000}' /proc/uptime)
 ACTUAL=$(wc -c <"$TEMP/body" | tr -d '[:space:]')
-if [ "$WGET_STATUS" -ne 0 ] || [ "$ACTUAL" != "$BYTES" ] || ! awk '
+if [ "$WGET_STATUS" -ne 0 ] || [ "$ACTUAL" != "$BYTES" ] || ! awk -v port="$PORT" '
 	{ line=tolower($0); sub(/\r$/, "", line) }
+	index(line, "connecting to 127.0.0.1:" port "... connected.") { proxy=1 }
 	line ~ /^[[:space:]]*http\/[0-9.]+ 206([[:space:]]|$)/ { status=1 }
 	line ~ /^[[:space:]]*content-range:[[:space:]]*bytes 0-1048575\/[0-9*]+[[:space:]]*$/ { range=1 }
-	END { exit !(status && range) }
+	END { exit !(proxy && status && range) }
 ' "$TEMP/wget.log"; then
 	echo 'error: proxy download failed or returned an incomplete response' >&2
 	exit 1
